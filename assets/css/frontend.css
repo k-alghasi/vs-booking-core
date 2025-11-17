@@ -1,0 +1,8 @@
+/* استایل‌های پایه برای انتخابگر صندلی */
+.vsbbm-seat-map {
+    margin: 20px 0;
+}
+
+.vsbbm-seat {
+    transition: all 0.3s ease;
+}

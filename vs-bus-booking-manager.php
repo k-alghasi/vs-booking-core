@@ -14,7 +14,7 @@
 defined('ABSPATH') || exit;
 
 // تعریف ثابت‌های پلاگین
-define('VSBBM_VERSION', '1.6.0');
+define('VSBBM_VERSION', '1.9.0');
 define('VSBBM_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('VSBBM_PLUGIN_PATH', plugin_dir_path(__FILE__));
 

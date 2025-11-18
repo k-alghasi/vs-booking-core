@@ -38,6 +38,14 @@ class VSBBM_Seat_Reservations {
     }
 
     /**
+     * Initialize the class (for compatibility with main plugin)
+     */
+    public static function init() {
+        // Class is already initialized via get_instance() at the bottom
+        error_log('VSBBM: Seat Reservations initialized');
+    }
+
+    /**
      * ایجاد جدول رزرو صندلی‌ها
      */
     public static function create_table() {

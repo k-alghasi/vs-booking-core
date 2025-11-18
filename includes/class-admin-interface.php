@@ -97,6 +97,15 @@ class VSBBM_Admin_Interface {
 
         add_submenu_page(
             'vsbbm-dashboard',
+            'تنظیمات SMS',
+            'تنظیمات SMS',
+            'manage_options',
+            'vsbbm-sms-settings',
+            array($this, 'render_sms_settings_page')
+        );
+
+        add_submenu_page(
+            'vsbbm-dashboard',
             'تنظیمات',
             'تنظیمات',
             'manage_options',
@@ -410,6 +419,284 @@ class VSBBM_Admin_Interface {
                 color: #23282d;
             }
         </style>
+        <?php
+    }
+
+    /**
+     * نمایش صفحه تنظیمات SMS
+     */
+    public function render_sms_settings_page() {
+        // ذخیره تنظیمات
+        if (isset($_POST['vsbbm_save_sms_settings'])) {
+            $this->save_sms_settings();
+        }
+
+        // تست اتصال
+        if (isset($_POST['vsbbm_test_sms_connection'])) {
+            $this->test_sms_connection();
+        }
+
+        $settings = $this->get_sms_settings();
+        $supported_panels = VSBBM_SMS_Notifications::get_supported_panels();
+
+        ?>
+        <div class="wrap">
+            <h1>📱 تنظیمات سیستم SMS</h1>
+
+            <div class="notice notice-info">
+                <p>💡 <strong>توجه:</strong> تنظیمات SMS برای ارسال پیامک‌های اطلاع‌رسانی خودکار رزروها و تغییرات سفارشات.</p>
+            </div>
+
+            <form method="post" action="">
+                <?php wp_nonce_field('vsbbm_save_sms_settings'); ?>
+
+                <div class="card" style="max-width: 800px;">
+                    <h3>🔧 تنظیمات عمومی SMS</h3>
+                    <table class="form-table">
+                        <tr>
+                            <th scope="row"><label for="sms_panel">پنل SMS</label></th>
+                            <td>
+                                <select name="sms_panel" id="sms_panel" required>
+                                    <option value="">-- انتخاب پنل --</option>
+                                    <?php foreach ($supported_panels as $key => $label): ?>
+                                        <option value="<?php echo esc_attr($key); ?>" <?php selected($settings['sms_panel'], $key); ?>>
+                                            <?php echo esc_html($label); ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                                <p class="description">پنل SMS مورد استفاده برای ارسال پیامک</p>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th scope="row"><label for="test_phone_number">شماره تست</label></th>
+                            <td>
+                                <input type="tel" name="test_phone_number" id="test_phone_number"
+                                       value="<?php echo esc_attr($settings['test_phone_number']); ?>"
+                                       class="regular-text" placeholder="09123456789">
+                                <p class="description">شماره تلفن برای تست اتصال پنل SMS</p>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th scope="row"><label for="otp_expiry_minutes">زمان انقضا OTP (دقیقه)</label></th>
+                            <td>
+                                <input type="number" name="otp_expiry_minutes" id="otp_expiry_minutes"
+                                       value="<?php echo esc_attr($settings['otp_expiry_minutes'] ?: 5); ?>"
+                                       class="small-text" min="1" max="60">
+                                <p class="description">زمان اعتبار کد تایید (پیش‌فرض: ۵ دقیقه)</p>
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+
+                <!-- تنظیمات پنل‌های مختلف -->
+                <div id="panel-settings" style="display: none;">
+                    <!-- IPPanel Settings -->
+                    <div class="card panel-settings" id="ippanel-settings" style="max-width: 800px; margin-top: 20px; display: none;">
+                        <h3>⚙️ تنظیمات IPPanel</h3>
+                        <table class="form-table">
+                            <tr>
+                                <th scope="row"><label for="ippanel_api_key">API Key</label></th>
+                                <td>
+                                    <input type="password" name="ippanel_api_key" id="ippanel_api_key"
+                                           value="<?php echo esc_attr($settings['ippanel_api_key']); ?>"
+                                           class="regular-text" required>
+                                    <p class="description">کلید API از پنل IPPanel</p>
+                                </td>
+                            </tr>
+                            <tr>
+                                <th scope="row"><label for="ippanel_originator">شماره فرستنده</label></th>
+                                <td>
+                                    <input type="text" name="ippanel_originator" id="ippanel_originator"
+                                           value="<?php echo esc_attr($settings['ippanel_originator']); ?>"
+                                           class="regular-text" placeholder="3000xxxxxx" required>
+                                    <p class="description">شماره خط اختصاصی از IPPanel</p>
+                                </td>
+                            </tr>
+                            <tr>
+                                <th scope="row"><label for="ippanel_password">رمز عبور</label></th>
+                                <td>
+                                    <input type="password" name="ippanel_password" id="ippanel_password"
+                                           value="<?php echo esc_attr($settings['ippanel_password']); ?>"
+                                           class="regular-text">
+                                    <p class="description">رمز عبور پنل IPPanel (در صورت نیاز)</p>
+                                </td>
+                            </tr>
+                        </table>
+                    </div>
+
+                    <!-- Kavenegar Settings -->
+                    <div class="card panel-settings" id="kavenegar-settings" style="max-width: 800px; margin-top: 20px; display: none;">
+                        <h3>⚙️ تنظیمات Kavenegar</h3>
+                        <table class="form-table">
+                            <tr>
+                                <th scope="row"><label for="kavenegar_api_key">API Key</label></th>
+                                <td>
+                                    <input type="password" name="kavenegar_api_key" id="kavenegar_api_key"
+                                           value="<?php echo esc_attr($settings['kavenegar_api_key']); ?>"
+                                           class="regular-text" required>
+                                    <p class="description">کلید API از پنل Kavenegar</p>
+                                </td>
+                            </tr>
+                            <tr>
+                                <th scope="row"><label for="kavenegar_sender">شماره فرستنده</label></th>
+                                <td>
+                                    <input type="text" name="kavenegar_sender" id="kavenegar_sender"
+                                           value="<?php echo esc_attr($settings['kavenegar_sender']); ?>"
+                                           class="regular-text" placeholder="1000xxxxxx" required>
+                                    <p class="description">شماره خط اختصاصی از Kavenegar</p>
+                                </td>
+                            </tr>
+                        </table>
+                    </div>
+
+                    <!-- SMS.ir Settings -->
+                    <div class="card panel-settings" id="smsir-settings" style="max-width: 800px; margin-top: 20px; display: none;">
+                        <h3>⚙️ تنظیمات SMS.ir</h3>
+                        <table class="form-table">
+                            <tr>
+                                <th scope="row"><label for="smsir_api_key">API Key</label></th>
+                                <td>
+                                    <input type="password" name="smsir_api_key" id="smsir_api_key"
+                                           value="<?php echo esc_attr($settings['smsir_api_key']); ?>"
+                                           class="regular-text" required>
+                                    <p class="description">کلید API از پنل SMS.ir</p>
+                                </td>
+                            </tr>
+                            <tr>
+                                <th scope="row"><label for="smsir_line_number">شماره خط</label></th>
+                                <td>
+                                    <input type="text" name="smsir_line_number" id="smsir_line_number"
+                                           value="<?php echo esc_attr($settings['smsir_line_number']); ?>"
+                                           class="regular-text" placeholder="3000xxxxxx" required>
+                                    <p class="description">شماره خط اختصاصی از SMS.ir</p>
+                                </td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="card" style="max-width: 800px; margin-top: 20px;">
+                    <h3>📤 ارسال SMS به مشتریان</h3>
+                    <table class="form-table">
+                        <tr>
+                            <th scope="row">تایید رزرو</th>
+                            <td>
+                                <label>
+                                    <input type="checkbox" name="enable_customer_confirmation_sms"
+                                           value="1" <?php checked($settings['enable_customer_confirmation_sms'], true); ?>>
+                                    ارسال SMS تایید رزرو پس از تکمیل سفارش
+                                </label>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th scope="row">لغو رزرو</th>
+                            <td>
+                                <label>
+                                    <input type="checkbox" name="enable_customer_cancellation_sms"
+                                           value="1" <?php checked($settings['enable_customer_cancellation_sms'], true); ?>>
+                                    ارسال SMS اطلاع‌رسانی لغو رزرو
+                                </label>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th scope="row">استفاده از بلیط</th>
+                            <td>
+                                <label>
+                                    <input type="checkbox" name="enable_ticket_used_sms"
+                                           value="1" <?php checked($settings['enable_ticket_used_sms'], false); ?>>
+                                    ارسال SMS اطلاع‌رسانی استفاده از بلیط
+                                </label>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th scope="row">کد OTP</th>
+                            <td>
+                                <label>
+                                    <input type="checkbox" name="enable_otp_sms"
+                                           value="1" <?php checked($settings['enable_otp_sms'], true); ?>>
+                                    ارسال SMS کد تایید شماره تلفن
+                                </label>
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+
+                <div class="card" style="max-width: 800px; margin-top: 20px;">
+                    <h3>📝 الگوهای پیام SMS</h3>
+                    <p>می‌توانید متن پیش‌فرض پیام‌های SMS را تغییر دهید:</p>
+                    <table class="form-table">
+                        <tr>
+                            <th scope="row"><label for="customer_confirmation_sms_template">تایید رزرو مشتری</label></th>
+                            <td>
+                                <textarea name="customer_confirmation_sms_template" id="customer_confirmation_sms_template"
+                                          rows="3" class="large-text"><?php echo esc_textarea($settings['customer_confirmation_sms_template'] ?: "✅ رزرو شما تایید شد\nسفارش #[ORDER_ID]\nمبلغ: [AMOUNT]\nبرای مشاهده بلیط به حساب کاربری مراجعه کنید."); ?></textarea>
+                                <p class="description">متغیرهای موجود: [ORDER_ID], [AMOUNT], [CUSTOMER_NAME]</p>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th scope="row"><label for="customer_cancellation_sms_template">لغو رزرو مشتری</label></th>
+                            <td>
+                                <textarea name="customer_cancellation_sms_template" id="customer_cancellation_sms_template"
+                                          rows="2" class="large-text"><?php echo esc_textarea($settings['customer_cancellation_sms_template'] ?: "❌ رزرو لغو شد\nسفارش #[ORDER_ID]\nمبلغ به حساب شما بازگردانده خواهد شد."); ?></textarea>
+                                <p class="description">متغیرهای موجود: [ORDER_ID], [CUSTOMER_NAME]</p>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th scope="row"><label for="otp_sms_template">کد OTP</label></th>
+                            <td>
+                                <textarea name="otp_sms_template" id="otp_sms_template"
+                                          rows="2" class="large-text"><?php echo esc_textarea($settings['otp_sms_template'] ?: "کد تایید شما: [OTP_CODE]\nاین کد تا [EXPIRY_MINUTES] دقیقه معتبر است."); ?></textarea>
+                                <p class="description">متغیرهای موجود: [OTP_CODE], [EXPIRY_MINUTES]</p>
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+
+                <p class="submit" style="margin-top: 20px;">
+                    <input type="submit" name="vsbbm_save_sms_settings" class="button button-primary"
+                           value="💾 ذخیره تنظیمات">
+                    <input type="submit" name="vsbbm_test_sms_connection" class="button button-secondary"
+                           value="🧪 تست اتصال" style="margin-right: 10px;">
+                </p>
+            </form>
+        </div>
+
+        <style>
+            .card {
+                background: #fff;
+                border: 1px solid #ccd0d4;
+                border-radius: 4px;
+                padding: 20px;
+                margin-bottom: 20px;
+            }
+            .card h3 {
+                margin-top: 0;
+                padding-bottom: 10px;
+                border-bottom: 1px solid #eee;
+                color: #23282d;
+            }
+            .panel-settings {
+                border-left: 4px solid #667eea;
+            }
+        </style>
+
+        <script>
+        jQuery(document).ready(function($) {
+            function togglePanelSettings() {
+                const selectedPanel = $('#sms_panel').val();
+                $('.panel-settings').hide();
+                $('#panel-settings').hide();
+
+                if (selectedPanel) {
+                    $('#panel-settings').show();
+                    $('#' + selectedPanel + '-settings').show();
+                }
+            }
+
+            $('#sms_panel').on('change', togglePanelSettings);
+            togglePanelSettings(); // Initialize on page load
+        });
+        </script>
         <?php
     }
 
@@ -1440,6 +1727,121 @@ $(document).on('click', '.remove-field', function() {
         add_action('admin_notices', function() {
             echo '<div class="notice notice-success"><p>تنظیمات ایمیل با موفقیت ذخیره شد.</p></div>';
         });
+    }
+
+    /**
+     * دریافت تنظیمات SMS
+     */
+    private function get_sms_settings() {
+        $defaults = array(
+            'sms_panel' => '',
+            'test_phone_number' => '',
+            'otp_expiry_minutes' => 5,
+            'enable_customer_confirmation_sms' => true,
+            'enable_customer_cancellation_sms' => true,
+            'enable_ticket_used_sms' => false,
+            'enable_otp_sms' => true,
+            'customer_confirmation_sms_template' => '',
+            'customer_cancellation_sms_template' => '',
+            'otp_sms_template' => '',
+            // IPPanel settings
+            'ippanel_api_key' => '',
+            'ippanel_originator' => '',
+            'ippanel_password' => '',
+            // Kavenegar settings
+            'kavenegar_api_key' => '',
+            'kavenegar_sender' => '',
+            // SMS.ir settings
+            'smsir_api_key' => '',
+            'smsir_line_number' => '',
+        );
+
+        $settings = get_option('vsbbm_sms_settings', array());
+        return wp_parse_args($settings, $defaults);
+    }
+
+    /**
+     * ذخیره تنظیمات SMS
+     */
+    private function save_sms_settings() {
+        if (!wp_verify_nonce($_POST['_wpnonce'], 'vsbbm_save_sms_settings')) {
+            return;
+        }
+
+        $settings = array(
+            'sms_panel' => sanitize_text_field($_POST['sms_panel']),
+            'test_phone_number' => sanitize_text_field($_POST['test_phone_number']),
+            'otp_expiry_minutes' => intval($_POST['otp_expiry_minutes']),
+            'enable_customer_confirmation_sms' => isset($_POST['enable_customer_confirmation_sms']),
+            'enable_customer_cancellation_sms' => isset($_POST['enable_customer_cancellation_sms']),
+            'enable_ticket_used_sms' => isset($_POST['enable_ticket_used_sms']),
+            'enable_otp_sms' => isset($_POST['enable_otp_sms']),
+            'customer_confirmation_sms_template' => sanitize_textarea_field($_POST['customer_confirmation_sms_template']),
+            'customer_cancellation_sms_template' => sanitize_textarea_field($_POST['customer_cancellation_sms_template']),
+            'otp_sms_template' => sanitize_textarea_field($_POST['otp_sms_template']),
+            // IPPanel settings
+            'ippanel_api_key' => sanitize_text_field($_POST['ippanel_api_key']),
+            'ippanel_originator' => sanitize_text_field($_POST['ippanel_originator']),
+            'ippanel_password' => sanitize_text_field($_POST['ippanel_password']),
+            // Kavenegar settings
+            'kavenegar_api_key' => sanitize_text_field($_POST['kavenegar_api_key']),
+            'kavenegar_sender' => sanitize_text_field($_POST['kavenegar_sender']),
+            // SMS.ir settings
+            'smsir_api_key' => sanitize_text_field($_POST['smsir_api_key']),
+            'smsir_line_number' => sanitize_text_field($_POST['smsir_line_number']),
+        );
+
+        update_option('vsbbm_sms_settings', $settings);
+
+        add_action('admin_notices', function() {
+            echo '<div class="notice notice-success"><p>تنظیمات SMS با موفقیت ذخیره شد.</p></div>';
+        });
+    }
+
+    /**
+     * تست اتصال پنل SMS
+     */
+    private function test_sms_connection() {
+        if (!wp_verify_nonce($_POST['_wpnonce'], 'vsbbm_save_sms_settings')) {
+            return;
+        }
+
+        $panel = sanitize_text_field($_POST['sms_panel']);
+        $test_phone = sanitize_text_field($_POST['test_phone_number']);
+
+        if (empty($panel) || empty($test_phone)) {
+            add_action('admin_notices', function() {
+                echo '<div class="notice notice-error"><p>لطفاً پنل SMS و شماره تلفن تست را وارد کنید.</p></div>';
+            });
+            return;
+        }
+
+        // ذخیره تنظیمات موقت برای تست
+        $temp_settings = array(
+            'sms_panel' => $panel,
+            'test_phone_number' => $test_phone,
+            'ippanel_api_key' => sanitize_text_field($_POST['ippanel_api_key'] ?? ''),
+            'ippanel_originator' => sanitize_text_field($_POST['ippanel_originator'] ?? ''),
+            'kavenegar_api_key' => sanitize_text_field($_POST['kavenegar_api_key'] ?? ''),
+            'kavenegar_sender' => sanitize_text_field($_POST['kavenegar_sender'] ?? ''),
+            'smsir_api_key' => sanitize_text_field($_POST['smsir_api_key'] ?? ''),
+            'smsir_line_number' => sanitize_text_field($_POST['smsir_line_number'] ?? ''),
+        );
+
+        update_option('vsbbm_sms_settings', $temp_settings);
+
+        // تست اتصال
+        $test_result = VSBBM_SMS_Notifications::test_sms_connection($panel);
+
+        if ($test_result) {
+            add_action('admin_notices', function() use ($test_phone) {
+                echo '<div class="notice notice-success"><p>✅ اتصال پنل SMS با موفقیت تست شد. پیامک آزمایشی به شماره ' . esc_html($test_phone) . ' ارسال شد.</p></div>';
+            });
+        } else {
+            add_action('admin_notices', function() {
+                echo '<div class="notice notice-error"><p>❌ خطا در اتصال به پنل SMS. لطفاً تنظیمات را بررسی کنید.</p></div>';
+            });
+        }
     }
 
     private function get_bus_products() {

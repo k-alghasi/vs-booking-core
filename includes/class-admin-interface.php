@@ -91,6 +91,15 @@ class VSBBM_Admin_Interface {
 
         add_submenu_page(
             'vsbbm-dashboard',
+            'تنظیمات License',
+            'تنظیمات License',
+            'manage_options',
+            'vsbbm-license',
+            array($this, 'render_license_page')
+        );
+
+        add_submenu_page(
+            'vsbbm-dashboard',
             'لیست سیاه',
             'لیست سیاه',
             'manage_options',
@@ -1310,6 +1319,331 @@ class VSBBM_Admin_Interface {
                 font-weight: bold;
             }
         </style>
+        <?php
+    }
+
+    /**
+     * نمایش صفحه تنظیمات License
+     */
+    public function render_license_page() {
+        $license_manager = VSBBM_License_Manager::get_instance();
+        $license_info = $license_manager->get_license_info();
+
+        // پردازش فعال‌سازی license
+        if (isset($_POST['vsbbm_activate_license'])) {
+            $this->handle_license_activation();
+        }
+
+        // پردازش غیرفعال‌سازی license
+        if (isset($_POST['vsbbm_deactivate_license'])) {
+            $this->handle_license_deactivation();
+        }
+
+        ?>
+        <div class="wrap">
+            <h1>🔑 تنظیمات License نسخه Pro</h1>
+
+            <div class="notice notice-info">
+                <p>💡 <strong>توجه:</strong> برای استفاده از امکانات نسخه Pro، نیاز به فعال‌سازی License معتبر دارید.</p>
+            </div>
+
+            <!-- وضعیت License -->
+            <div class="vsbbm-license-status">
+                <h3>📊 وضعیت License</h3>
+                <div class="license-status-card <?php echo 'license-status-' . $license_info['status']; ?>">
+                    <div class="status-icon">
+                        <?php
+                        switch ($license_info['status']) {
+                            case 'active':
+                                echo '✅';
+                                break;
+                            case 'expired':
+                                echo '⏰';
+                                break;
+                            case 'inactive':
+                                echo '❌';
+                                break;
+                        }
+                        ?>
+                    </div>
+                    <div class="status-content">
+                        <h4><?php echo esc_html($license_info['message']); ?></h4>
+                        <?php if ($license_info['status'] === 'active'): ?>
+                            <div class="license-details">
+                                <p><strong>کلید License:</strong> <?php echo esc_html($license_info['license_key']); ?></p>
+                                <p><strong>ایمیل:</strong> <?php echo esc_html($license_info['email']); ?></p>
+                                <p><strong>انقضا:</strong> <?php echo esc_html($license_info['expires_at']); ?></p>
+                                <p><strong>فعال شده در:</strong> <?php echo esc_html($license_info['activated_at']); ?></p>
+                                <p><strong>دامنه:</strong> <?php echo esc_html($license_info['site_url']); ?></p>
+                            </div>
+                        <?php endif; ?>
+                    </div>
+                </div>
+            </div>
+
+            <!-- فعال‌سازی License -->
+            <?php if ($license_info['status'] !== 'active'): ?>
+            <div class="vsbbm-license-activation">
+                <h3>🔓 فعال‌سازی License</h3>
+                <form method="post" action="" id="license-activation-form">
+                    <?php wp_nonce_field('vsbbm_license_activation', 'license_nonce'); ?>
+
+                    <table class="form-table">
+                        <tr>
+                            <th scope="row"><label for="license_key">کلید License</label></th>
+                            <td>
+                                <input type="text" name="license_key" id="license_key"
+                                       class="regular-text" placeholder="XXXX-XXXX-XXXX-XXXX"
+                                       required>
+                                <p class="description">کلید License را که از پنل کاربری دریافت کرده‌اید وارد کنید</p>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th scope="row"><label for="license_email">ایمیل License</label></th>
+                            <td>
+                                <input type="email" name="license_email" id="license_email"
+                                       class="regular-text" placeholder="email@example.com"
+                                       required>
+                                <p class="description">ایمیلی که License به آن ثبت شده است</p>
+                            </td>
+                        </tr>
+                    </table>
+
+                    <p class="submit">
+                        <input type="submit" name="vsbbm_activate_license" class="button button-primary button-large"
+                               value="🔓 فعال‌سازی License" id="activate-license-btn">
+                        <span class="spinner" style="display: none;"></span>
+                    </p>
+                </form>
+            </div>
+            <?php endif; ?>
+
+            <!-- مدیریت License -->
+            <?php if ($license_info['status'] === 'active'): ?>
+            <div class="vsbbm-license-management">
+                <h3>⚙️ مدیریت License</h3>
+                <form method="post" action="" id="license-deactivation-form">
+                    <?php wp_nonce_field('vsbbm_license_deactivation', 'license_nonce'); ?>
+
+                    <div class="license-actions">
+                        <p>License شما فعال است. در صورت نیاز به انتقال به سایت دیگر، ابتدا License را غیرفعال کنید.</p>
+
+                        <input type="submit" name="vsbbm_deactivate_license"
+                               class="button button-secondary"
+                               value="🔒 غیرفعال‌سازی License"
+                               onclick="return confirm('آیا مطمئن هستید؟ License غیرفعال خواهد شد.');">
+                    </div>
+                </form>
+            </div>
+            <?php endif; ?>
+
+            <!-- راهنما -->
+            <div class="vsbbm-license-help">
+                <h3>❓ راهنما</h3>
+                <div class="help-content">
+                    <h4>چگونه License تهیه کنم؟</h4>
+                    <ol>
+                        <li>به وب‌سایت <a href="https://vernasoft.ir" target="_blank">VernaSoft</a> مراجعه کنید</li>
+                        <li>نسخه Pro پلاگین را خریداری کنید</li>
+                        <li>کلید License و ایمیل را از پنل کاربری دریافت کنید</li>
+                        <li>در این صفحه کلید را وارد کرده و فعال‌سازی کنید</li>
+                    </ol>
+
+                    <h4>امکانات نسخه Pro</h4>
+                    <ul>
+                        <li>✅ API موبایل کامل</li>
+                        <li>✅ سیستم کش پیشرفته</li>
+                        <li>✅ گزارش‌گیری پیشرفته</li>
+                        <li>✅ پنل تنظیمات کامل</li>
+                        <li>✅ پشتیبانی اولویت‌دار</li>
+                        <li>✅ بروزرسانی‌های منظم</li>
+                    </ul>
+
+                    <h4>سوالات متداول</h4>
+                    <dl>
+                        <dt>License رو چطور منتقل کنم؟</dt>
+                        <dd>ابتدا در سایت فعلی غیرفعال کنید، سپس در سایت جدید فعال‌سازی کنید.</dd>
+
+                        <dt>License منقضی شد چیکار کنم؟</dt>
+                        <dd>از طریق پنل کاربری تمدید کنید و مجدداً فعال‌سازی کنید.</dd>
+
+                        <dt>مشکل در فعال‌سازی دارم</dt>
+                        <dd>از اتصال اینترنت مطمئن شوید و کلید License را بررسی کنید.</dd>
+                    </dl>
+                </div>
+            </div>
+        </div>
+
+        <style>
+            .vsbbm-license-status, .vsbbm-license-activation, .vsbbm-license-management, .vsbbm-license-help {
+                background: white;
+                padding: 20px;
+                border-radius: 8px;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                margin-bottom: 20px;
+            }
+
+            .vsbbm-license-status h3, .vsbbm-license-activation h3, .vsbbm-license-management h3, .vsbbm-license-help h3 {
+                margin-top: 0;
+                padding-bottom: 10px;
+                border-bottom: 2px solid #667eea;
+                color: #23282d;
+            }
+
+            .license-status-card {
+                display: flex;
+                align-items: center;
+                gap: 20px;
+                padding: 20px;
+                border-radius: 8px;
+                border-left: 4px solid;
+            }
+
+            .license-status-active {
+                background: #e8f5e8;
+                border-left-color: #28a745;
+            }
+
+            .license-status-expired {
+                background: #fff3cd;
+                border-left-color: #ffc107;
+            }
+
+            .license-status-inactive {
+                background: #f8d7da;
+                border-left-color: #dc3545;
+            }
+
+            .status-icon {
+                font-size: 48px;
+            }
+
+            .status-content h4 {
+                margin: 0 0 10px 0;
+                color: #23282d;
+            }
+
+            .license-details {
+                font-size: 14px;
+            }
+
+            .license-details p {
+                margin: 5px 0;
+            }
+
+            .license-actions {
+                background: #f8f9fa;
+                padding: 15px;
+                border-radius: 5px;
+                border-left: 4px solid #6c757d;
+            }
+
+            .vsbbm-license-help .help-content {
+                line-height: 1.6;
+            }
+
+            .vsbbm-license-help h4 {
+                color: #23282d;
+                margin-top: 20px;
+                margin-bottom: 10px;
+            }
+
+            .vsbbm-license-help ul, .vsbbm-license-help ol {
+                margin-right: 20px;
+            }
+
+            .vsbbm-license-help dl {
+                margin-top: 10px;
+            }
+
+            .vsbbm-license-help dt {
+                font-weight: bold;
+                color: #23282d;
+                margin-top: 10px;
+            }
+
+            .vsbbm-license-help dd {
+                margin-right: 20px;
+                margin-bottom: 10px;
+                color: #666;
+            }
+
+            .spinner {
+                float: none;
+                margin: 0 10px;
+            }
+        </style>
+
+        <script>
+        jQuery(document).ready(function($) {
+            // فعال‌سازی License
+            $('#license-activation-form').on('submit', function(e) {
+                e.preventDefault();
+
+                var $form = $(this);
+                var $btn = $('#activate-license-btn');
+                var $spinner = $form.find('.spinner');
+
+                $btn.prop('disabled', true);
+                $spinner.show();
+
+                $.ajax({
+                    url: ajaxurl,
+                    type: 'POST',
+                    data: {
+                        action: 'vsbbm_activate_license',
+                        nonce: $form.find('[name="license_nonce"]').val(),
+                        license_key: $('#license_key').val(),
+                        email: $('#license_email').val()
+                    },
+                    success: function(response) {
+                        if (response.success) {
+                            location.reload();
+                        } else {
+                            alert('خطا: ' + response.data);
+                        }
+                    },
+                    error: function() {
+                        alert('خطا در اتصال به سرور');
+                    },
+                    complete: function() {
+                        $btn.prop('disabled', false);
+                        $spinner.hide();
+                    }
+                });
+            });
+
+            // غیرفعال‌سازی License
+            $('#license-deactivation-form').on('submit', function(e) {
+                e.preventDefault();
+
+                if (!confirm('آیا مطمئن هستید که می‌خواهید License را غیرفعال کنید؟')) {
+                    return;
+                }
+
+                var $form = $(this);
+
+                $.ajax({
+                    url: ajaxurl,
+                    type: 'POST',
+                    data: {
+                        action: 'vsbbm_deactivate_license',
+                        nonce: $form.find('[name="license_nonce"]').val()
+                    },
+                    success: function(response) {
+                        if (response.success) {
+                            location.reload();
+                        } else {
+                            alert('خطا: ' + response.data);
+                        }
+                    },
+                    error: function() {
+                        alert('خطا در اتصال به سرور');
+                    }
+                });
+            });
+        });
+        </script>
         <?php
     }
 
@@ -2622,6 +2956,68 @@ $(document).on('click', '.remove-field', function() {
         $new_key = wp_generate_password(32, false);
         update_option('vsbbm_api_key', $new_key);
         return $new_key;
+    }
+
+    /**
+     * مدیریت فعال‌سازی License
+     */
+    private function handle_license_activation() {
+        if (!wp_verify_nonce($_POST['license_nonce'], 'vsbbm_license_activation')) {
+            return;
+        }
+
+        if (!current_user_can('manage_options')) {
+            return;
+        }
+
+        $license_key = sanitize_text_field($_POST['license_key']);
+        $email = sanitize_email($_POST['license_email']);
+
+        if (empty($license_key) || empty($email)) {
+            add_action('admin_notices', function() {
+                echo '<div class="notice notice-error"><p>کلید License و ایمیل الزامی است.</p></div>';
+            });
+            return;
+        }
+
+        $license_manager = VSBBM_License_Manager::get_instance();
+        $result = $license_manager->activate_license($license_key, $email);
+
+        if (is_wp_error($result)) {
+            add_action('admin_notices', function() use ($result) {
+                echo '<div class="notice notice-error"><p>خطا در فعال‌سازی License: ' . esc_html($result->get_error_message()) . '</p></div>';
+            });
+        } else {
+            add_action('admin_notices', function() {
+                echo '<div class="notice notice-success"><p>License با موفقیت فعال شد!</p></div>';
+            });
+        }
+    }
+
+    /**
+     * مدیریت غیرفعال‌سازی License
+     */
+    private function handle_license_deactivation() {
+        if (!wp_verify_nonce($_POST['license_nonce'], 'vsbbm_license_deactivation')) {
+            return;
+        }
+
+        if (!current_user_can('manage_options')) {
+            return;
+        }
+
+        $license_manager = VSBBM_License_Manager::get_instance();
+        $result = $license_manager->deactivate_license();
+
+        if (is_wp_error($result)) {
+            add_action('admin_notices', function() use ($result) {
+                echo '<div class="notice notice-error"><p>خطا در غیرفعال‌سازی License: ' . esc_html($result->get_error_message()) . '</p></div>';
+            });
+        } else {
+            add_action('admin_notices', function() {
+                echo '<div class="notice notice-success"><p>License غیرفعال شد.</p></div>';
+            });
+        }
     }
 
     /**

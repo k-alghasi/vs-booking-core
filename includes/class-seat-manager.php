@@ -24,7 +24,10 @@ class VSBBM_Seat_Manager {
     self::register_ajax_handlers();
 
     // هوک نمایش انتخاب صندلی - فقط یک بار
-    add_action('woocommerce_before_add_to_cart_form', array(__CLASS__, 'display_seat_selection'), 10);
+    add_action('woocommerce_single_product_summary', array(__CLASS__, 'display_seat_selection'), 25);
+
+    // فیلتر برای دیباگ
+    add_filter('the_content', array(__CLASS__, 'check_product_page'), 1);
 
     error_log('🎯 VSBBM_Seat_Manager: all hooks registered');
 }
@@ -170,14 +173,27 @@ class VSBBM_Seat_Manager {
     
     public static function display_seat_selection() {
     global $product;
-    
-    if (!$product) return;
-    
+
+    error_log('VSBBM DEBUG: display_seat_selection called');
+
+    if (!$product) {
+        error_log('VSBBM DEBUG: No product object found');
+        return;
+    }
+
     $product_id = $product->get_id();
-    if (!self::is_seat_booking_enabled($product_id)) return;
+    error_log('VSBBM DEBUG: Product ID: ' . $product_id);
+
+    if (!self::is_seat_booking_enabled($product_id)) {
+        error_log('VSBBM DEBUG: Seat booking not enabled for product ' . $product_id);
+        return;
+    }
+
+    error_log('VSBBM DEBUG: Seat booking enabled, displaying selector');
     
     $available_seats = self::get_seat_numbers($product_id);
     $reserved_seats = self::get_reserved_seats($product_id);
+    $reserved_seats = $reserved_seats ?: array();
     
     ?>
     <div class="vsbbm-seat-selection" data-product-id="<?php echo esc_attr($product_id); ?>" style="background: #fff; padding: 25px; margin: 30px 0; border: 2px solid #e0e0e0; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
@@ -518,7 +534,6 @@ class VSBBM_Seat_Manager {
     passengerFields.appendChild(tableContainer);
 }
 }
-    
     function vsbbmAddToCart() {
         if (window.selectedSeats.length === 0) {
             alert('لطفاً حداقل یک صندلی انتخاب کنید.');
@@ -1128,4 +1143,17 @@ public static function register_ajax_handlers() {
     
     error_log('🟢 VSBBM: AJAX handlers registered successfully');
 }
+
+    /**
+     * بررسی صفحه محصول برای دیباگ
+     */
+    public static function check_product_page($content) {
+        if (is_product()) {
+            global $product;
+            $product_id = $product ? $product->get_id() : 'null';
+            error_log('VSBBM DEBUG: On product page, Product ID: ' . $product_id);
+            error_log('VSBBM DEBUG: Seat booking enabled: ' . (self::is_seat_booking_enabled($product_id) ? 'YES' : 'NO'));
+        }
+        return $content;
+    }
 }

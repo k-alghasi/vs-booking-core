@@ -19,6 +19,7 @@ class VSBBM_Admin_Interface {
         add_action('wp_ajax_vsbbm_update_booking_status', array($this, 'update_booking_status_ajax'));
         add_action('wp_ajax_vsbbm_export_bookings', array($this, 'export_bookings_ajax'));
         add_action('wp_ajax_vsbbm_use_ticket', array($this, 'use_ticket_ajax'));
+        add_action('wp_ajax_vsbbm_clear_cache', array($this, 'clear_cache_ajax'));
 
         // اضافه کردن hook برای نمایش اطلاعات مسافر در صفحه سفارش
         add_action('woocommerce_before_order_itemmeta', array($this, 'display_order_passenger_info'), 10, 3);
@@ -150,6 +151,15 @@ class VSBBM_Admin_Interface {
             'manage_options',
             'vsbbm-tickets',
             array($this, 'render_tickets_page')
+        );
+
+        add_submenu_page(
+            'vsbbm-dashboard',
+            'تست عملکرد',
+            'تست عملکرد',
+            'manage_options',
+            'vsbbm-test',
+            array($this, 'render_test_page')
         );
     }
     
@@ -2553,6 +2563,47 @@ $(document).on('click', '.remove-field', function() {
             wp_send_json_error('خطا در بروزرسانی وضعیت بلیط');
         }
     }
+
+    /**
+     * AJAX handler for clearing cache
+     */
+    public function clear_cache_ajax() {
+        if (!wp_verify_nonce($_POST['_wpnonce'] ?? '', 'vsbbm_clear_cache')) {
+            wp_send_json_error('امنیت درخواست تایید نشد');
+            return;
+        }
+
+        $cache_manager = VSBBM_Cache_Manager::get_instance();
+        $cache_type = sanitize_text_field($_POST['cache_type'] ?? 'all');
+
+        switch ($cache_type) {
+            case 'all':
+                $cache_manager->clear_all_cache();
+                $message = 'تمام کش پاک شد.';
+                break;
+            case 'products':
+                $cache_manager->clear_product_cache();
+                $message = 'کش محصولات پاک شد.';
+                break;
+            case 'reservations':
+                $cache_manager->clear_reservation_cache();
+                $message = 'کش رزروها پاک شد.';
+                break;
+            case 'tickets':
+                $cache_manager->clear_ticket_cache();
+                $message = 'کش بلیط‌ها پاک شد.';
+                break;
+            case 'stats':
+                $cache_manager->clear_stats_cache();
+                $message = 'کش آمار پاک شد.';
+                break;
+            default:
+                $cache_manager->clear_all_cache();
+                $message = 'تمام کش پاک شد.';
+        }
+
+        wp_send_json_success($message);
+    }
     
     private function get_settings() {
         return get_option('vsbbm_settings', array(
@@ -3614,7 +3665,268 @@ $(document).on('click', '.remove-field', function() {
                 break;
         }
     }
-    
+
+    /**
+     * نمایش صفحه تست عملکرد
+     */
+    public function render_test_page() {
+        ?>
+        <div class="wrap">
+            <h1>🧪 تست عملکرد پلاگین</h1>
+
+            <div class="notice notice-info">
+                <p>💡 <strong>توجه:</strong> این صفحه برای تست عملکرد پلاگین و شناسایی مشکلات نمایش محصول طراحی شده است.</p>
+            </div>
+
+            <div class="vsbbm-test-results">
+                <h3>📋 نتایج تست</h3>
+
+                <?php
+                // تست ۱: بررسی فعال بودن کلاس‌ها
+                $tests = array();
+
+                $tests[] = array(
+                    'name' => 'کلاس VSBBM_Seat_Manager',
+                    'status' => class_exists('VSBBM_Seat_Manager') ? 'success' : 'error',
+                    'message' => class_exists('VSBBM_Seat_Manager') ? 'کلاس موجود است' : 'کلاس یافت نشد'
+                );
+
+                $tests[] = array(
+                    'name' => 'کلاس VSBBM_Seat_Reservations',
+                    'status' => class_exists('VSBBM_Seat_Reservations') ? 'success' : 'error',
+                    'message' => class_exists('VSBBM_Seat_Reservations') ? 'کلاس موجود است' : 'کلاس یافت نشد'
+                );
+
+                // تست ۲: بررسی محصولات با رزرو صندلی فعال
+                $bus_products = get_posts(array(
+                    'post_type' => 'product',
+                    'posts_per_page' => -1,
+                    'meta_query' => array(
+                        array(
+                            'key' => '_vsbbm_enable_seat_booking',
+                            'value' => 'yes',
+                            'compare' => '='
+                        )
+                    )
+                ));
+
+                $tests[] = array(
+                    'name' => 'محصولات با رزرو صندلی فعال',
+                    'status' => !empty($bus_products) ? 'success' : 'warning',
+                    'message' => sprintf('%d محصول یافت شد', count($bus_products))
+                );
+
+                // تست ۳: بررسی هوک‌ها
+                global $wp_filter;
+                $hook_registered = isset($wp_filter['woocommerce_single_product_summary']) &&
+                                   !empty($wp_filter['woocommerce_single_product_summary']->callbacks);
+
+                $tests[] = array(
+                    'name' => 'هوک نمایش انتخابگر صندلی',
+                    'status' => $hook_registered ? 'success' : 'error',
+                    'message' => $hook_registered ? 'هوک ثبت شده است' : 'هوک ثبت نشده است'
+                );
+
+                // تست ۴: بررسی کش
+                $cache_manager = VSBBM_Cache_Manager::get_instance();
+                $cache_stats = $cache_manager->get_cache_stats();
+
+                $tests[] = array(
+                    'name' => 'سیستم کش',
+                    'status' => is_array($cache_stats) ? 'success' : 'error',
+                    'message' => is_array($cache_stats) ? 'سیستم کش فعال است' : 'مشکل در سیستم کش'
+                );
+
+                // نمایش نتایج
+                foreach ($tests as $test) {
+                    $icon = $test['status'] === 'success' ? '✅' : ($test['status'] === 'warning' ? '⚠️' : '❌');
+                    $class = 'test-' . $test['status'];
+                    echo "<div class='test-item {$class}'>";
+                    echo "<div class='test-icon'>{$icon}</div>";
+                    echo "<div class='test-content'>";
+                    echo "<strong>{$test['name']}</strong><br>";
+                    echo "<span>{$test['message']}</span>";
+                    echo "</div>";
+                    echo "</div>";
+                }
+                ?>
+
+                <!-- لیست محصولات تست -->
+                <?php if (!empty($bus_products)): ?>
+                <div class="test-products-section">
+                    <h4>🚌 محصولات با رزرو صندلی فعال</h4>
+                    <div class="products-list">
+                        <?php foreach ($bus_products as $product): ?>
+                            <div class="product-item">
+                                <strong><?php echo esc_html($product->post_title); ?></strong>
+                                <span class="product-id">(ID: <?php echo $product->ID; ?>)</span>
+                                <a href="<?php echo get_permalink($product->ID); ?>" target="_blank" class="button button-small">مشاهده محصول</a>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+                <?php endif; ?>
+
+                <!-- تست دستی -->
+                <div class="manual-test-section">
+                    <h4>🔧 تست دستی</h4>
+                    <p>برای تست کامل، مراحل زیر را انجام دهید:</p>
+                    <ol>
+                        <li>به صفحه یکی از محصولات بالا بروید</li>
+                        <li>بررسی کنید که آیا انتخابگر صندلی نمایش داده می‌شود</li>
+                        <li>اگر نمایش داده نمی‌شود، لاگ‌های خطا را در <code>wp-content/debug.log</code> چک کنید</li>
+                        <li>اگر لاگی وجود ندارد، ممکن است هوک اجرا نشود</li>
+                    </ol>
+
+                    <div class="test-actions">
+                        <button type="button" onclick="clearCache()" class="button button-secondary">پاکسازی کش</button>
+                        <button type="button" onclick="reloadPage()" class="button button-secondary">بارگذاری مجدد</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <style>
+            .vsbbm-test-results {
+                background: white;
+                padding: 20px;
+                border-radius: 8px;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            }
+
+            .vsbbm-test-results h3 {
+                margin-top: 0;
+                padding-bottom: 10px;
+                border-bottom: 2px solid #667eea;
+                color: #23282d;
+            }
+
+            .test-item {
+                display: flex;
+                align-items: center;
+                padding: 15px;
+                margin: 10px 0;
+                border-radius: 6px;
+                border-left: 4px solid;
+            }
+
+            .test-success {
+                background: #e8f5e8;
+                border-left-color: #28a745;
+            }
+
+            .test-warning {
+                background: #fff3cd;
+                border-left-color: #ffc107;
+            }
+
+            .test-error {
+                background: #f8d7da;
+                border-left-color: #dc3545;
+            }
+
+            .test-icon {
+                font-size: 20px;
+                margin-left: 10px;
+            }
+
+            .test-content strong {
+                display: block;
+                margin-bottom: 5px;
+                color: #23282d;
+            }
+
+            .test-content span {
+                color: #666;
+                font-size: 14px;
+            }
+
+            .test-products-section,
+            .manual-test-section {
+                margin-top: 30px;
+                padding: 20px;
+                background: #f8f9fa;
+                border-radius: 6px;
+            }
+
+            .test-products-section h4,
+            .manual-test-section h4 {
+                margin-top: 0;
+                color: #23282d;
+            }
+
+            .products-list {
+                display: grid;
+                gap: 10px;
+                margin-top: 15px;
+            }
+
+            .product-item {
+                display: flex;
+                align-items: center;
+                gap: 15px;
+                padding: 10px;
+                background: white;
+                border-radius: 4px;
+                border: 1px solid #dee2e6;
+            }
+
+            .product-id {
+                color: #666;
+                font-size: 12px;
+            }
+
+            .manual-test-section ol {
+                margin-right: 20px;
+            }
+
+            .manual-test-section code {
+                background: #e9ecef;
+                padding: 2px 6px;
+                border-radius: 3px;
+                font-family: monospace;
+            }
+
+            .test-actions {
+                margin-top: 15px;
+                display: flex;
+                gap: 10px;
+            }
+        </style>
+
+        <script>
+        function clearCache() {
+            if (confirm('آیا از پاکسازی کش مطمئن هستید؟')) {
+                fetch('<?php echo admin_url('admin-ajax.php'); ?>', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: 'action=vsbbm_clear_cache&cache_type=all&_wpnonce=<?php echo wp_create_nonce('vsbbm_clear_cache'); ?>'
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert('کش پاکسازی شد. صفحه را رفرش کنید.');
+                        location.reload();
+                    } else {
+                        alert('خطا در پاکسازی کش');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('خطا در ارتباط با سرور');
+                });
+            }
+        }
+
+        function reloadPage() {
+            location.reload();
+        }
+        </script>
+        <?php
+    }
+
 } // پایان کلاس
 
 // Initialize the class

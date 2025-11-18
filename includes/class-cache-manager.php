@@ -165,7 +165,7 @@ class VSBBM_Cache_Manager {
             $this->set($key, $cached, 300); // 5 minutes
         }
 
-        return $cached;
+        return $cached ?: array();
     }
 
     /**

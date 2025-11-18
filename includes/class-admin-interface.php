@@ -82,6 +82,15 @@ class VSBBM_Admin_Interface {
 
         add_submenu_page(
             'vsbbm-dashboard',
+            'تنظیمات API',
+            'تنظیمات API',
+            'manage_options',
+            'vsbbm-api-settings',
+            array($this, 'render_api_settings_page')
+        );
+
+        add_submenu_page(
+            'vsbbm-dashboard',
             'لیست سیاه',
             'لیست سیاه',
             'manage_options',
@@ -979,6 +988,326 @@ class VSBBM_Admin_Interface {
                 margin: 5px 0 0 20px;
                 color: #666;
                 font-style: italic;
+            }
+        </style>
+        <?php
+    }
+
+    /**
+     * نمایش صفحه تنظیمات API
+     */
+    public function render_api_settings_page() {
+        // ذخیره تنظیمات
+        if (isset($_POST['vsbbm_save_api_settings'])) {
+            $this->save_api_settings();
+        }
+
+        // تولید کلید API جدید
+        if (isset($_POST['vsbbm_generate_api_key'])) {
+            $this->generate_new_api_key();
+        }
+
+        // پاکسازی توکن‌های منقضی
+        if (isset($_POST['vsbbm_cleanup_expired_tokens'])) {
+            $this->cleanup_expired_tokens();
+        }
+
+        $settings = $this->get_api_settings();
+        $api_stats = $this->get_api_stats();
+
+        ?>
+        <div class="wrap">
+            <h1>🔑 تنظیمات API موبایل</h1>
+
+            <div class="notice notice-info">
+                <p>💡 <strong>توجه:</strong> تنظیمات API برای ارتباط ایمن اپلیکیشن موبایل با وب‌سایت استفاده می‌شود.</p>
+            </div>
+
+            <!-- آمار API -->
+            <div class="vsbbm-api-stats">
+                <h3>📊 آمار API</h3>
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon">🔐</div>
+                        <div class="stat-content">
+                            <div class="stat-number"><?php echo number_format($api_stats['active_tokens'] ?? 0); ?></div>
+                            <div class="stat-label">توکن فعال</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">📱</div>
+                        <div class="stat-content">
+                            <div class="stat-number"><?php echo number_format($api_stats['total_requests'] ?? 0); ?></div>
+                            <div class="stat-label">کل درخواست‌ها</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">⚡</div>
+                        <div class="stat-content">
+                            <div class="stat-number"><?php echo number_format($api_stats['avg_response_time'] ?? 0, 2); ?>ms</div>
+                            <div class="stat-label">میانگین زمان پاسخ</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">🚫</div>
+                        <div class="stat-content">
+                            <div class="stat-number"><?php echo number_format($api_stats['failed_requests'] ?? 0); ?></div>
+                            <div class="stat-label">درخواست‌های ناموفق</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- تنظیمات عمومی API -->
+            <div class="vsbbm-api-general">
+                <h3>⚙️ تنظیمات عمومی API</h3>
+                <form method="post" action="">
+                    <?php wp_nonce_field('vsbbm_save_api_settings'); ?>
+
+                    <table class="form-table">
+                        <tr>
+                            <th scope="row"><label for="api_enabled">فعال بودن API</label></th>
+                            <td>
+                                <label>
+                                    <input type="checkbox" name="api_enabled" id="api_enabled"
+                                           value="1" <?php checked($settings['api_enabled'], true); ?>>
+                                    فعال بودن REST API برای اپلیکیشن موبایل
+                                </label>
+                                <p class="description">غیرفعال کردن API دسترسی اپلیکیشن موبایل را مسدود می‌کند</p>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th scope="row"><label for="api_key">کلید API</label></th>
+                            <td>
+                                <input type="text" name="api_key" id="api_key"
+                                       value="<?php echo esc_attr($settings['api_key']); ?>"
+                                       class="regular-text" readonly>
+                                <input type="submit" name="vsbbm_generate_api_key" class="button button-secondary"
+                                       value="🔄 تولید کلید جدید">
+                                <p class="description">کلید API برای authentication اپلیکیشن موبایل</p>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th scope="row"><label for="token_expiry_days">انقضا توکن (روز)</label></th>
+                            <td>
+                                <input type="number" name="token_expiry_days" id="token_expiry_days"
+                                       value="<?php echo esc_attr($settings['token_expiry_days']); ?>"
+                                       class="small-text" min="1" max="365">
+                                <p class="description">زمان اعتبار توکن‌های authentication (پیش‌فرض: ۳۰ روز)</p>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th scope="row"><label for="rate_limit_requests">محدودیت نرخ (درخواست/دقیقه)</label></th>
+                            <td>
+                                <input type="number" name="rate_limit_requests" id="rate_limit_requests"
+                                       value="<?php echo esc_attr($settings['rate_limit_requests']); ?>"
+                                       class="small-text" min="1" max="1000">
+                                <p class="description">حداکثر تعداد درخواست‌های مجاز در دقیقه برای هر IP</p>
+                            </td>
+                        </tr>
+                    </table>
+
+                    <p class="submit">
+                        <input type="submit" name="vsbbm_save_api_settings" class="button button-primary"
+                               value="💾 ذخیره تنظیمات">
+                    </p>
+                </form>
+            </div>
+
+            <!-- تنظیمات امنیتی -->
+            <div class="vsbbm-api-security">
+                <h3>🔒 تنظیمات امنیتی</h3>
+                <form method="post" action="">
+                    <?php wp_nonce_field('vsbbm_save_api_settings'); ?>
+
+                    <table class="form-table">
+                        <tr>
+                            <th scope="row">CORS</th>
+                            <td>
+                                <label>
+                                    <input type="checkbox" name="cors_enabled"
+                                           value="1" <?php checked($settings['cors_enabled'], true); ?>>
+                                    فعال بودن CORS برای دسترسی cross-origin
+                                </label>
+                                <p class="description">اجازه دسترسی از دامنه‌های دیگر</p>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th scope="row"><label for="allowed_origins">دامنه‌های مجاز</label></th>
+                            <td>
+                                <textarea name="allowed_origins" id="allowed_origins" rows="3" class="large-text"
+                                          placeholder="https://app.example.com&#10;https://mobile.example.com"><?php echo esc_textarea($settings['allowed_origins']); ?></textarea>
+                                <p class="description">دامنه‌های مجاز برای CORS (هر دامنه در یک خط)</p>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th scope="row">لاگ‌گیری</th>
+                            <td>
+                                <label>
+                                    <input type="checkbox" name="api_logging_enabled"
+                                           value="1" <?php checked($settings['api_logging_enabled'], true); ?>>
+                                    فعال بودن لاگ‌گیری درخواست‌های API
+                                </label>
+                                <p class="description">ذخیره لاگ تمام درخواست‌های API برای debugging</p>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th scope="row"><label for="log_retention_days">نگهداری لاگ (روز)</label></th>
+                            <td>
+                                <input type="number" name="log_retention_days" id="log_retention_days"
+                                       value="<?php echo esc_attr($settings['log_retention_days']); ?>"
+                                       class="small-text" min="1" max="365">
+                                <p class="description">زمان نگهداری لاگ‌های API (پیش‌فرض: ۳۰ روز)</p>
+                            </td>
+                        </tr>
+                    </table>
+
+                    <p class="submit">
+                        <input type="submit" name="vsbbm_save_api_settings" class="button button-primary"
+                               value="💾 ذخیره تنظیمات">
+                    </p>
+                </form>
+            </div>
+
+            <!-- مدیریت توکن‌ها -->
+            <div class="vsbbm-api-tokens">
+                <h3>🎫 مدیریت توکن‌ها</h3>
+                <form method="post" action="">
+                    <?php wp_nonce_field('vsbbm_cleanup_expired_tokens'); ?>
+                    <p>
+                        <input type="submit" name="vsbbm_cleanup_expired_tokens" class="button button-secondary"
+                               value="🧹 پاکسازی توکن‌های منقضی شده">
+                        <span class="description">پاکسازی توکن‌های authentication منقضی شده</span>
+                    </p>
+                </form>
+
+                <!-- لیست توکن‌های فعال -->
+                <h4>توکن‌های فعال</h4>
+                <?php $this->render_active_tokens_table(); ?>
+            </div>
+
+            <!-- تنظیمات کش API -->
+            <div class="vsbbm-api-cache">
+                <h3>🗂️ تنظیمات کش API</h3>
+                <form method="post" action="">
+                    <?php wp_nonce_field('vsbbm_save_api_settings'); ?>
+
+                    <table class="form-table">
+                        <tr>
+                            <th scope="row">کش API</th>
+                            <td>
+                                <label>
+                                    <input type="checkbox" name="api_cache_enabled"
+                                           value="1" <?php checked($settings['api_cache_enabled'], true); ?>>
+                                    فعال بودن کش برای پاسخ‌های API
+                                </label>
+                                <p class="description">بهبود عملکرد با کش کردن پاسخ‌های API</p>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th scope="row"><label for="api_cache_ttl">زمان زندگی کش API (ثانیه)</label></th>
+                            <td>
+                                <input type="number" name="api_cache_ttl" id="api_cache_ttl"
+                                       value="<?php echo esc_attr($settings['api_cache_ttl']); ?>"
+                                       class="small-text" min="60" max="3600">
+                                <p class="description">زمان نگهداری داده‌ها در کش API (پیش‌فرض: ۳۰۰ ثانیه)</p>
+                            </td>
+                        </tr>
+                    </table>
+
+                    <p class="submit">
+                        <input type="submit" name="vsbbm_save_api_settings" class="button button-primary"
+                               value="💾 ذخیره تنظیمات">
+                    </p>
+                </form>
+            </div>
+        </div>
+
+        <style>
+            .vsbbm-api-stats, .vsbbm-api-general, .vsbbm-api-security, .vsbbm-api-tokens, .vsbbm-api-cache {
+                background: white;
+                padding: 20px;
+                border-radius: 8px;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                margin-bottom: 20px;
+            }
+
+            .vsbbm-api-stats h3, .vsbbm-api-general h3, .vsbbm-api-security h3, .vsbbm-api-tokens h3, .vsbbm-api-cache h3 {
+                margin-top: 0;
+                padding-bottom: 10px;
+                border-bottom: 2px solid #667eea;
+                color: #23282d;
+            }
+
+            .stats-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+                gap: 15px;
+                margin-top: 15px;
+            }
+
+            .stat-card {
+                background: #f8f9fa;
+                padding: 20px;
+                border-radius: 8px;
+                text-align: center;
+                border-left: 4px solid #667eea;
+                display: flex;
+                align-items: center;
+                gap: 15px;
+            }
+
+            .stat-icon {
+                font-size: 24px;
+            }
+
+            .stat-content {
+                flex: 1;
+            }
+
+            .stat-number {
+                font-size: 24px;
+                font-weight: bold;
+                color: #333;
+                margin-bottom: 5px;
+            }
+
+            .stat-label {
+                font-size: 14px;
+                color: #666;
+            }
+
+            .vsbbm-api-tokens h4 {
+                margin: 20px 0 10px 0;
+                color: #23282d;
+            }
+
+            .tokens-table {
+                width: 100%;
+                border-collapse: collapse;
+                margin-top: 10px;
+            }
+
+            .tokens-table th,
+            .tokens-table td {
+                padding: 8px 12px;
+                text-align: right;
+                border-bottom: 1px solid #dee2e6;
+            }
+
+            .tokens-table th {
+                background: #f8f9fa;
+                font-weight: bold;
+            }
+
+            .token-status-active {
+                color: #28a745;
+                font-weight: bold;
+            }
+
+            .token-status-expired {
+                color: #dc3545;
+                font-weight: bold;
             }
         </style>
         <?php
@@ -2128,6 +2457,171 @@ $(document).on('click', '.remove-field', function() {
         add_action('admin_notices', function() {
             echo '<div class="notice notice-success"><p>تنظیمات کش با موفقیت ذخیره شد.</p></div>';
         });
+    }
+
+    /**
+     * دریافت تنظیمات API
+     */
+    private function get_api_settings() {
+        return array(
+            'api_enabled' => get_option('vsbbm_api_enabled', true),
+            'api_key' => get_option('vsbbm_api_key', $this->generate_api_key()),
+            'token_expiry_days' => get_option('vsbbm_token_expiry_days', 30),
+            'rate_limit_requests' => get_option('vsbbm_rate_limit_requests', 60),
+            'cors_enabled' => get_option('vsbbm_cors_enabled', true),
+            'allowed_origins' => get_option('vsbbm_allowed_origins', ''),
+            'api_logging_enabled' => get_option('vsbbm_api_logging_enabled', false),
+            'log_retention_days' => get_option('vsbbm_log_retention_days', 30),
+            'api_cache_enabled' => get_option('vsbbm_api_cache_enabled', true),
+            'api_cache_ttl' => get_option('vsbbm_api_cache_ttl', 300),
+        );
+    }
+
+    /**
+     * ذخیره تنظیمات API
+     */
+    private function save_api_settings() {
+        if (!wp_verify_nonce($_POST['_wpnonce'], 'vsbbm_save_api_settings')) {
+            return;
+        }
+
+        $settings = array(
+            'api_enabled' => isset($_POST['api_enabled']),
+            'api_key' => sanitize_text_field($_POST['api_key']),
+            'token_expiry_days' => intval($_POST['token_expiry_days']),
+            'rate_limit_requests' => intval($_POST['rate_limit_requests']),
+            'cors_enabled' => isset($_POST['cors_enabled']),
+            'allowed_origins' => sanitize_textarea_field($_POST['allowed_origins']),
+            'api_logging_enabled' => isset($_POST['api_logging_enabled']),
+            'log_retention_days' => intval($_POST['log_retention_days']),
+            'api_cache_enabled' => isset($_POST['api_cache_enabled']),
+            'api_cache_ttl' => intval($_POST['api_cache_ttl']),
+        );
+
+        update_option('vsbbm_api_enabled', $settings['api_enabled']);
+        update_option('vsbbm_api_key', $settings['api_key']);
+        update_option('vsbbm_token_expiry_days', $settings['token_expiry_days']);
+        update_option('vsbbm_rate_limit_requests', $settings['rate_limit_requests']);
+        update_option('vsbbm_cors_enabled', $settings['cors_enabled']);
+        update_option('vsbbm_allowed_origins', $settings['allowed_origins']);
+        update_option('vsbbm_api_logging_enabled', $settings['api_logging_enabled']);
+        update_option('vsbbm_log_retention_days', $settings['log_retention_days']);
+        update_option('vsbbm_api_cache_enabled', $settings['api_cache_enabled']);
+        update_option('vsbbm_api_cache_ttl', $settings['api_cache_ttl']);
+
+        add_action('admin_notices', function() {
+            echo '<div class="notice notice-success"><p>تنظیمات API با موفقیت ذخیره شد.</p></div>';
+        });
+    }
+
+    /**
+     * تولید کلید API جدید
+     */
+    private function generate_new_api_key() {
+        $new_key = wp_generate_password(32, false);
+        update_option('vsbbm_api_key', $new_key);
+
+        add_action('admin_notices', function() use ($new_key) {
+            echo '<div class="notice notice-success"><p>کلید API جدید تولید شد: <code>' . esc_html($new_key) . '</code></p></div>';
+        });
+    }
+
+    /**
+     * پاکسازی توکن‌های منقضی شده
+     */
+    private function cleanup_expired_tokens() {
+        global $wpdb;
+        $table_name = $wpdb->prefix . 'vsbbm_api_tokens';
+
+        $deleted = $wpdb->query("DELETE FROM $table_name WHERE expires_at < NOW()");
+
+        add_action('admin_notices', function() use ($deleted) {
+            echo '<div class="notice notice-success"><p>' . intval($deleted) . ' توکن منقضی شده پاکسازی شد.</p></div>';
+        });
+    }
+
+    /**
+     * دریافت آمار API
+     */
+    private function get_api_stats() {
+        global $wpdb;
+        $tokens_table = $wpdb->prefix . 'vsbbm_api_tokens';
+
+        // توکن‌های فعال
+        $active_tokens = $wpdb->get_var("SELECT COUNT(*) FROM $tokens_table WHERE expires_at > NOW()");
+
+        // آمار کلی (اگر جدول لاگ وجود داشته باشد)
+        $total_requests = get_option('vsbbm_api_total_requests', 0);
+        $avg_response_time = get_option('vsbbm_api_avg_response_time', 0);
+        $failed_requests = get_option('vsbbm_api_failed_requests', 0);
+
+        return array(
+            'active_tokens' => intval($active_tokens),
+            'total_requests' => intval($total_requests),
+            'avg_response_time' => floatval($avg_response_time),
+            'failed_requests' => intval($failed_requests),
+        );
+    }
+
+    /**
+     * نمایش جدول توکن‌های فعال
+     */
+    private function render_active_tokens_table() {
+        global $wpdb;
+        $table_name = $wpdb->prefix . 'vsbbm_api_tokens';
+
+        $tokens = $wpdb->get_results("
+            SELECT t.*, u.display_name, u.user_email
+            FROM $table_name t
+            LEFT JOIN {$wpdb->users} u ON t.user_id = u.ID
+            WHERE t.expires_at > NOW()
+            ORDER BY t.created_at DESC
+            LIMIT 20
+        ");
+
+        if (empty($tokens)) {
+            echo '<p>هیچ توکن فعالی یافت نشد.</p>';
+            return;
+        }
+
+        ?>
+        <table class="tokens-table wp-list-table widefat fixed striped">
+            <thead>
+                <tr>
+                    <th>کاربر</th>
+                    <th>ایمیل</th>
+                    <th>تاریخ ایجاد</th>
+                    <th>تاریخ انقضا</th>
+                    <th>وضعیت</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php foreach ($tokens as $token): ?>
+                    <tr>
+                        <td><?php echo esc_html($token->display_name ?: 'نامشخص'); ?></td>
+                        <td><?php echo esc_html($token->user_email ?: 'نامشخص'); ?></td>
+                        <td><?php echo date_i18n('Y/m/d H:i', strtotime($token->created_at)); ?></td>
+                        <td><?php echo date_i18n('Y/m/d H:i', strtotime($token->expires_at)); ?></td>
+                        <td><span class="token-status-active">فعال</span></td>
+                    </tr>
+                <?php endforeach; ?>
+            </tbody>
+        </table>
+        <?php
+    }
+
+    /**
+     * تولید کلید API
+     */
+    private function generate_api_key() {
+        $existing_key = get_option('vsbbm_api_key');
+        if ($existing_key) {
+            return $existing_key;
+        }
+
+        $new_key = wp_generate_password(32, false);
+        update_option('vsbbm_api_key', $new_key);
+        return $new_key;
     }
 
     /**

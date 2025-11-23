@@ -998,15 +998,36 @@ public static function add_to_cart_ajax() {
         return;
     }
 
-    // Parse کردن داده‌های مسافر
-    $passenger_data = json_decode($passenger_data_json, true);
-    error_log('🔵 VSBBM AJAX: Passenger data decoded: ' . print_r($passenger_data, true));
+// Parse کردن داده‌های مسافر
+    $raw_passenger_data = json_decode($passenger_data_json, true);
 
-    if (!is_array($passenger_data) || empty($passenger_data)) {
+    if (!is_array($raw_passenger_data) || empty($raw_passenger_data)) {
         error_log('🔴 VSBBM AJAX: Invalid passenger data');
         wp_send_json_error('اطلاعات مسافران نامعتبر است');
         return;
     }
+
+    // ✅ SANITIZATION: تمیزسازی عمیق داده‌های مسافران
+    $passenger_data = array_map(function($passenger) {
+        $clean_passenger = array();
+        foreach ($passenger as $key => $value) {
+            // تمیزسازی کلید
+            $clean_key = sanitize_text_field($key);
+            
+            // تمیزسازی مقدار بر اساس نوع داده
+            if ($key === 'seat_number') {
+                $clean_value = intval($value);
+            } else {
+                // برای سایر فیلدها مثل نام، کدملی و...
+                $clean_value = sanitize_text_field($value);
+            }
+            
+            $clean_passenger[$clean_key] = $clean_value;
+        }
+        return $clean_passenger;
+    }, $raw_passenger_data);
+
+    error_log('🔵 VSBBM AJAX: Passenger data sanitized: ' . print_r($passenger_data, true));
 
     // رزرو صندلی‌ها قبل از افزودن به سبد خرید
     $selected_seats = array_column($passenger_data, 'seat_number');

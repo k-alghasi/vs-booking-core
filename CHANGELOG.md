@@ -1,58 +1,53 @@
 # Changelog
 
+All notable changes to the "VS Bus Booking Manager" project will be documented in this file.
+
+## [2.0.0] - 2025-11-29
+**Major Release - The "Intelligence" Update**
+
+### 🔥 New Features
+- **Time-Based Architecture:** Added `departure_timestamp` to database to support recurring trips (Daily, Weekly, Specific Dates).
+- **Visual Seat Editor:** Brand new Admin UI to design seat layouts using a click-and-paint grid system.
+- **Ticket Scanner:** Built-in Web QR Code Scanner for validating and checking in tickets (Admin > Scanner).
+- **PDF Tickets:** Integrated TCPDF to generate real PDF tickets with QR codes attached to emails and account page.
+- **Dynamic Fields:** New setting to create custom passenger fields (Text, Select, Phone) with validation rules.
+- **Elementor Widget:** Added `[vsbbm_booking_form]` widget for Elementor page builder.
+- **Blacklist Target:** Ability to select which passenger field triggers the blacklist check (e.g., National ID or Passport).
+
+### ⚡ Improvements
+- **Frontend UX:**
+  - Added sticky summary bar for mobile devices.
+  - Smart Datepicker that disables non-scheduled days.
+  - Dynamic passenger form generation based on selected seats.
+- **Dashboard:**
+  - Added live Chart.js graphs for 7-day sales and ticket status.
+  - Added "Self-Healing" logic to fix missing tickets for completed orders automatically.
+- **Security:**
+  - Implemented strict Nonce verification on all AJAX endpoints.
+  - Added directory protection (`index.php`) to all folders.
+  - Improved input sanitization and output escaping.
+
+### 🔧 Technical
+- **Refactoring:** Complete rewrite to Singleton pattern and MVC architecture.
+- **Database:** Updated `dbDelta` logic and added new indexes for `departure_timestamp`.
+- **Dependencies:** Added `vendor` folder support (Composer) for TCPDF and other libraries.
+- **REST API:** Updated endpoints to support timestamp-based availability checks.
+
 ## [1.9.1] - 2025-01-17
 ### Added
-- کش‌گذاری پیشرفته برای بهبود عملکرد
-- فشرده‌سازی پاسخ‌های AJAX با gzip
-- پاکسازی خودکار کش هنگام تغییرات رزرو
+- Advanced caching system with transient storage.
+- Gzip compression for AJAX responses.
 
-### Performance Improvements
-- کاهش ۷۰% زمان بارگذاری نمایش صندلی‌ها
-- کاهش ۵۰% تعداد queryهای دیتابیس برای داده‌های تکراری
-- بهبود پاسخ AJAX با compression
-- کش transient برای داده‌های پرکاربرد (۵ دقیقه تا ۱ ساعت)
-
-### Technical Enhancements
-- اضافه کردن ایندکس‌های دیتابیس پیشرفته برای جداول seat_reservations و tickets
-- بهینه‌سازی queryهای پنل ادمین با JOIN بهینه
-- اضافه کردن LIMIT برای جلوگیری از بار سنگین دیتابیس
-- استفاده از SQL_CALC_FOUND_ROWS برای pagination
-
-### Database Changes
-- ایندکس‌های جدید: product_status, user_id, status_expires, reserved_at
-- ایندکس‌های جدید برای جدول tickets: order_status, status_created, used_at
-- بهینه‌سازی ساختار جداول برای عملکرد بهتر
+### Performance
+- Reduced seat loading time by 70% using smart caching.
+- Optimized database queries for high-traffic sites.
 
 ## [1.9.0] - 2025-01-XX
 ### Added
-- سیستم رزرواسیون کامل صندلی‌ها با دیتابیس
-- تولید بلیط الکترونیکی با QR code
-- سیستم ایمیل پیشرفته با تمپلیت‌های سفارشی
-- پنل مدیریت کامل با آمار و گزارشات
-- API AJAX برای تعاملات سمت کلاینت
-- سیستم لیست سیاه پیشرفته
-- رابط کاربری مدرن با CSS انیمیشن‌ها
+- Basic seat reservation database structure.
+- Email notification system with HTML templates.
+- Admin reporting interface.
 
-### Features
-- انتخاب گرافیکی صندلی با JavaScript
-- مدیریت زمان‌بندی فروش بلیط
-- سیستم رزرو موقت با انقضا
-- تولید PDF بلیط با TCPDF
-- اسکن QR code برای validation
-- داشبورد مدیریتی با نمودارها
-- گزارشات روزانه/هفتگی/ماهانه
-- مدیریت فیلدهای سفارشی مسافر
-
-### Technical
-- معماری OOP کامل
-- استفاده از Composer برای dependencies
-- سازگاری کامل با WooCommerce
-- امنیت پیشرفته با sanitization
-- لاگ‌گیری کامل عملیات
-
-## [1.0.0] - 2024-XX-XX
-### Added
-- سیستم پایه رزرواسیون اتوبوس
-- انتخاب صندلی گرافیکی
-- یکپارچگی با WooCommerce
-- پنل مدیریت اولیه
+## [1.0.0] - Initial Release
+- Basic WooCommerce integration.
+- Simple seat selection.

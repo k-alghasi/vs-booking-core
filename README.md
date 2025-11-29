@@ -1,107 +1,70 @@
 # VS Bus Booking Manager
 
-A comprehensive ticket and bus seat booking plugin for WooCommerce and WordPress, featuring graphical seat selection and blacklist management.
+The ultimate bus seat reservation system for WordPress & WooCommerce. Features a visual seat editor, recurring trips, PDF tickets, and a built-in QR scanner.
+
+**Version:** 2.0.0  
+**Requires PHP:** 7.4+  
+**Requires WooCommerce:** 5.0+
 
 ## Description
 
-سیستم رزرواسیون صندلی اتوبوس با انتخاب گرافیکی و لیست سیاه برای ووکامرس و وردپرس
+سیستم رزرواسیون صندلی اتوبوس با انتخاب گرافیکی، زمان‌بندی سفر و لیست سیاه برای ووکامرس
 
-This plugin provides a complete bus seat reservation system with:
-- Graphical seat selection interface
-- Blacklist management for problematic customers
-- WooCommerce integration
-- Admin dashboard for managing bookings
-- Seat availability tracking
-- AJAX-powered booking process
+VS Bus Booking Manager v2.0 is a major leap forward, transforming your website into a professional ticketing platform. It now supports time-based bookings (recurring trips), a visual drag-and-drop seat editor, and a fully functional ticket validation system.
+
+### ✨ New in Version 2.0
+- **Time-Based Booking:** Sell seats for specific dates and times (Recurring or One-time trips).
+- **Visual Seat Editor:** Design bus layouts visually in the admin panel.
+- **Ticket Scanner:** Validate and check-in passengers using your device's camera (QR Code).
+- **Dynamic Passenger Fields:** Customize required fields (Name, National ID, Gender, etc.).
+- **PDF Tickets:** Automatic generation of professional PDF tickets with QR codes.
 
 ## Features
 
-- **Graphical Seat Selection**: Interactive seat map for easy booking
-- **Blacklist System**: Block customers who violate terms
-- **WooCommerce Integration**: Seamless e-commerce functionality
-- **Admin Interface**: Comprehensive management dashboard
-- **Booking Reports**: Track and analyze reservations
-- **Responsive Design**: Works on all devices
-- **Electronic Tickets**: PDF tickets with QR codes
-- **Email Notifications**: Automated customer and admin notifications
-- **Real-time Reservations**: Database-backed seat reservations
+### 🚌 Booking Management
+- **Smart Date Picker:** Frontend calendar that respects recurring schedules (e.g., Only Mondays & Wednesdays).
+- **Visual Seat Map:** Interactive grid for selecting seats with "Loading" states and price tooltips.
+- **Dynamic Pricing:** Support for different prices per seat type.
+- **Mobile Sticky Footer:** Enhanced UX for mobile users during booking.
 
-## 🚀 Performance
+### 🛠 Admin Tools
+- **Visual Layout Editor:** Create 2x2, 1x2, or custom layouts with a click-and-paint interface.
+- **Dashboard Charts:** Live statistics for revenue, sales trends (Chart.js), and ticket status.
+- **Ticket Scanner:** Built-in web app to scan passenger QR codes and mark tickets as "Used".
+- **Self-Healing Data:** Automatically generates missing tickets/meta for older orders.
 
-Version 1.9.1 includes advanced performance optimizations:
+### ⚙️ Advanced Configuration
+- **Blacklist System:** Block users based on any field (National ID, Passport, Phone).
+- **Custom Fields:** Drag & drop builder for passenger information forms.
+- **Elementor Widget:** Dedicated widget to display the booking form anywhere.
+- **Notifications:** Customizable SMS (Iranian Gateways) and Email templates.
 
-- **Smart Caching**: Up to 70% reduction in seat loading time
-- **Database Optimization**: Advanced indexes for high-speed queries
-- **AJAX Compression**: Gzip-compressed responses for faster interactions
-- **Memory Management**: Efficient resource usage for high-traffic sites
-- **Query Optimization**: Reduced database load by 50% for repeated data
+## 🚀 Performance & Architecture
+
+Version 2.0.0 introduces a robust MVC architecture:
+- **Refactored Core:** Logic separated into Controllers, Models, and Views.
+- **Database Optimization:** Time-based indexing for fast queries on large datasets.
+- **Security First:** Full Nonce verification, sanitization, and output escaping.
+- **Smart Caching:** Multi-layer caching (Object Cache + Transients) to reduce DB load.
 
 ## Installation
 
-1. Upload the `vs-bus-booking-manager` folder to the `/wp-content/plugins/` directory
-2. Activate the plugin through the 'Plugins' menu in WordPress
-3. Configure settings in the admin panel
-4. Add seat booking to your WooCommerce products
+1. Upload the `vs-bus-booking-manager` folder to the `/wp-content/plugins/` directory.
+2. Activate the plugin through the 'Plugins' menu in WordPress.
+3. **Important:** Go to the plugin settings to create necessary database tables (Automatic on activation).
+4. Configure your Bus Products in WooCommerce (enable "Bus Seat Booking" in Product Data).
+5. Use the **Visual Seat Editor** tab to design your bus layout.
 
-## Changelog
+## Screenshots
 
-### Version 1.9.1 (Latest)
-- **Performance Optimizations**
-  - Advanced caching system with transient storage
-  - Database query optimization with new indexes
-  - AJAX response compression with gzip
-  - Up to 70% improvement in loading times
-  - Reduced database queries by 50%
-
-### Version 1.9.0
-- **Advanced Order Management**
-  - Enhanced bookings admin page with bulk operations
-  - Advanced filtering by service, status, date range, and search
-  - Bulk status updates for multiple bookings
-  - Service column in bookings table for better organization
-  - Improved user interface with select-all functionality
-  - Quick access to reservation management and order editing
-
-### Version 1.8.0
-- **Email Notification System**
-  - Comprehensive email notifications for customers and admins
-  - Customizable HTML email templates with Persian/RTL support
-  - Booking confirmation emails for customers
-  - Booking cancellation emails with refund information
-  - Admin notifications for new bookings and expired reservations
-  - Configurable email settings and sender information
-  - BCC functionality for admin oversight
-
-### Version 1.7.0
-- **Real Seat Reservation System**
-  - Implemented proper seat reservation with database tracking
-  - Added reservation states: reserved, confirmed, cancelled, expired
-  - Automatic cleanup of expired reservations
-  - Admin interface for managing reservations
-  - Real-time seat availability checking
-  - Order status integration for reservation management
-
-### Version 1.6.0
-- **Bug Fixes and UX Improvements**
-  - Fixed duplicate seat selection displays
-  - Resolved JavaScript scoping issues with seat selection
-  - Hidden WooCommerce default add to cart button and quantity selector
-  - Switched to AJAX-only cart addition for better reliability
-  - Code cleanup and removal of unused hooks
-
-### Version 1.4.0
-- Initial release with core booking functionality
-- Basic seat selection and blacklist features
-
-## Requirements
-
-- WordPress 5.0+
-- WooCommerce 3.0+
-- PHP 7.0+
+1. **Frontend:** Visual seat selection with date picker.
+2. **Admin:** Visual Seat Editor (Grid System).
+3. **Scanner:** QR Code Validator interface.
+4. **Dashboard:** Sales analytics and charts.
 
 ## Support
 
-For support and feature requests, visit [VernaSoft](https://vernasoft.ir)
+For support, documentation, and pro features, visit [VernaSoft](https://vernasoft.ir).
 
 ## License
 

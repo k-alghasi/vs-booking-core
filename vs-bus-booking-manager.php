@@ -61,7 +61,7 @@ class VS_Bus_Booking_Manager {
      * Constructor.
      */
     private function __construct() {
-        if ( ! this->check_requirements() ) {
+        if ( !$this->check_requirements() ) {
             return;
         }
 
